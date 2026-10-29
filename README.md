@@ -28,14 +28,19 @@ structured chat data and Codex sessions in the browser.
 
 ### Context origins (this fork)
 
-Load an original Codex session JSONL file and select **Context origins** above
-the conversation. This local-only inspector helps explain where recorded prompt
+Load an original Codex session JSONL file and select the **Context origins** icon
+beside the native conversation controls. A nonmodal side inspector explains where recorded prompt
 text comes from, without installing a skill, plugin, or MCP server in Codex.
 
 - Select a model request (the first request is the initial-context baseline).
 - Inspect categories and individual skill catalog entries, source paths, tool
   schemas, memory, AGENTS.md blocks, and the underlying text. Search names,
-  paths, or source content, and expand a source to inspect its evidence.
+  paths, or source content, and select a source to inspect its evidence.
+- Read sources as **Markdown** or **Original**, and copy the unchanged original
+  text. Markdown reuses the app's sanitizer with embedded media and HTML previews
+  disabled. Closing/reopening preserves the selected source and simulation.
+- Inspect explicit hook context separately. A hook's execution log or stdout is
+  not prompt evidence; unmatched context output is shown without a token estimate.
 - Simulate exclusions and reset them. This only changes the text estimate in
   the report; it never removes instructions from Codex or changes session files.
 - Copy report JSON, including source text, evidence and the hypothetical
@@ -52,6 +57,11 @@ Compacted sessions carry an explicit reconstruction limitation.
 Run locally with `pnpm install --frozen-lockfile`, then
 `VITE_EUPHONY_FRONTEND_ONLY=true pnpm dev`. Run the parser/accounting regression
 suite with `pnpm test:context`. No backend or API key is required for inspection.
+Run `pnpm test:ui` for production browser tests, including Markdown/original
+switching, mobile navigation, preserved simulation and interaction layout-shift
+measurement. Install the test browser with `pnpm exec playwright install chromium`
+if it is not already available. The layout check observes inspector interactions,
+not an audit of all upstream screens or real-user performance.
 
 ### Upstream features
 
