@@ -98,6 +98,29 @@ export class EuphonyCodex extends LitElement {
   @state()
   parseError: string | null = null;
 
+  @state()
+  private showContextOrigins = false;
+
+  @state()
+  private contextOriginsReady = false;
+
+  @state()
+  private contextOriginsError = '';
+
+  private rawContextEvents: unknown[] = [];
+
+  private async toggleContextOrigins() {
+    this.showContextOrigins = !this.showContextOrigins;
+    if (!this.showContextOrigins || this.contextOriginsReady) return;
+    try {
+      await import('../context-origins/context-origins');
+      this.contextOriginsReady = true;
+    } catch {
+      this.contextOriginsError =
+        'Could not load the context inspector. Reload the page and try again.';
+    }
+  }
+
   @query('euphony-conversation')
   conversationComponent: EuphonyConversation | undefined;
 
@@ -126,6 +149,8 @@ export class EuphonyCodex extends LitElement {
       : this.sessionString !== ''
         ? this.parseSessionString(this.sessionString)
         : [];
+
+    this.rawContextEvents = rawEvents;
 
     const parseResult = parseCodexSession(rawEvents);
     if (!parseResult) {
@@ -161,6 +186,30 @@ export class EuphonyCodex extends LitElement {
 
     return html`
       <div class="codex-wrapper">
+        <div class="context-toolbar">
+          <button
+            aria-expanded=${this.showContextOrigins}
+            aria-controls="context-origins"
+            @click=${() => void this.toggleContextOrigins()}
+          >
+            Context origins
+          </button>
+          <span>Explore instructions, skills and tool definitions.</span>
+        </div>
+        <div id="context-origins" ?hidden=${!this.showContextOrigins}>
+          ${this.showContextOrigins && this.contextOriginsReady
+            ? html`
+                <euphony-context-origins
+                  .events=${this.rawContextEvents}
+                  theme=${this.theme}
+                ></euphony-context-origins>
+              `
+            : this.showContextOrigins
+              ? html`<p role="status">
+                  ${this.contextOriginsError || 'Loading context inspector…'}
+                </p>`
+              : ''}
+        </div>
         <euphony-conversation
           .conversationData=${this.conversation}
           sharing-url=${ifDefined(this.sharingURL ?? undefined)}
