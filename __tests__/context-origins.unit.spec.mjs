@@ -142,6 +142,46 @@ test('does not turn filename mentions in ordinary messages into injected context
   );
 });
 
+test('correlates explicit hook context with prompt text without counting stdout or duplicates', () => {
+  const events = [
+    event('hook_response', {
+      hookSpecificOutput: {
+        hookEventName: 'SessionStart',
+        additionalContext: 'Injected project knowledge'
+      },
+      stdout: 'Execution log is not prompt context'
+    }),
+    message('developer', 'Injected project knowledge'),
+    message('user', 'Explain how hooks work'),
+    usage(500)
+  ];
+  const result = report(events);
+  const hooks = result.sources.filter(s => s.category === 'hooks');
+  assert.equal(hooks.length, 1);
+  assert.equal(hooks[0].stateOnly, false);
+  assert.match(hooks[0].delivery, /correlated/);
+  assert.equal(
+    result.sources.some(s => s.text.includes('Execution log')),
+    false
+  );
+  assert.equal(
+    result.sources.find(s => s.text === 'Explain how hooks work').category,
+    'conversation'
+  );
+});
+
+test('shows uncorrelated hook output without claiming it entered the request', () => {
+  const events = [
+    event('hook_response', { additionalContext: 'Hook context only in logs' }),
+    message('user', 'oi'),
+    usage(100)
+  ];
+  const source = report(events).sources.find(s => s.category === 'hooks');
+  assert.equal(source.stateOnly, true);
+  assert.equal(source.tokens, 0);
+  assert.match(source.delivery, /not established/);
+});
+
 test('keeps tool schemas distinct from MCP schemas and does not tokenize hashes', () => {
   const events = [
     event('session_meta', {}),
