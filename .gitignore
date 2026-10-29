@@ -30,3 +30,5 @@ streamlit-component/euphony_component/data
 
 __pycache__
 lib/
+test-results/
+playwright-report/
