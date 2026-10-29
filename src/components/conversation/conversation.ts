@@ -109,6 +109,8 @@ interface TranslateResponseWithPartIndex extends TranslateResponse {
 
 /**
  * Conversation element.
+ * @slot conversation-tools - Additional named, keyboard-accessible actions
+ * beside the built-in conversation controls. Consumers style their buttons.
  */
 @customElement('euphony-conversation')
 export class EuphonyConversation extends LitElement {
@@ -2381,7 +2383,7 @@ export class EuphonyConversation extends LitElement {
     // wrapping behavior after common identifier separators.
     return text.split(/([_.-])/g).map(part => {
       if (part === '_' || part === '-' || part === '.') {
-        return html`${part}<wbr>`;
+        return html`${part}<wbr />`;
       }
       return html`${part}`;
     });
@@ -2564,6 +2566,7 @@ export class EuphonyConversation extends LitElement {
         </div>
 
         <div class="action-group">
+          <slot name="conversation-tools"></slot>
           <button
             class="icon svg-icon preference-button"
             ?is-active=${this.isShowingPreferenceWindow}

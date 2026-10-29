@@ -1,49 +1,18 @@
 import { countTokens } from 'gpt-tokenizer/encoding/o200k_base';
 
-export const CONTEXT_CATEGORIES = {
-  base: 'Base instructions',
-  instructions: 'Developer instructions',
-  agents: 'AGENTS.md',
-  skills: 'Skill catalog',
-  memory: 'Memory',
-  environment: 'Environment & plugins',
-  tools: 'Built-in tool definitions',
-  mcp: 'MCP tool definitions',
-  conversation: 'Conversation',
-  calls: 'Tool calls',
-  results: 'Tool results',
-  summary: 'Compaction summary'
-} as const;
-
-export type ContextCategory = keyof typeof CONTEXT_CATEGORIES;
+import type {
+  ContextCategory,
+  ContextSource,
+  ContextCheckpoint,
+  ContextReport
+} from './context-types';
+export type {
+  ContextCategory,
+  ContextSource,
+  ContextCheckpoint,
+  ContextReport
+} from './context-types';
 type RecordValue = Record<string, unknown>;
-
-export interface ContextSource {
-  id: string;
-  category: ContextCategory;
-  title: string;
-  origin: string;
-  evidence: string;
-  text: string;
-  tokens: number;
-  stateOnly: boolean;
-}
-
-export interface ContextCheckpoint {
-  id: string;
-  label: string;
-  end: number;
-  input: number | null;
-  output: number | null;
-  window: number | null;
-}
-
-export interface ContextReport {
-  sources: ContextSource[];
-  estimatedTokens: number;
-  notices: string[];
-  checkpoint: ContextCheckpoint;
-}
 
 const record = (value: unknown): RecordValue =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -194,6 +163,33 @@ export function analyzeContext(
     .filter(e => e.type === 'response_item')
     .map(e => visibleText(record(e.payload).content, notices))
     .join('\n');
+  // Hook execution logs are not prompt messages. Correlate only an explicit
+  // additionalContext/systemMessage field, never stdout or a filename mention.
+  const hookEvidence = events.flatMap((event, index) => {
+    const payload = record(event.payload);
+    const specific = record(payload.hookSpecificOutput);
+    const hookRecord =
+      string(event.type).includes('hook') ||
+      string(payload.type).includes('hook') ||
+      'hookSpecificOutput' in payload;
+    if (!hookRecord) return [];
+    const text =
+      string(specific.additionalContext) ||
+      string(payload.additionalContext) ||
+      string(payload.systemMessage);
+    if (!text.trim()) return [];
+    return [
+      {
+        text,
+        index,
+        name:
+          string(payload.hookName) ||
+          string(specific.hookEventName) ||
+          string(payload.hookEventName) ||
+          'Unnamed hook'
+      }
+    ];
+  });
   let compacted = false;
 
   function add(
@@ -202,7 +198,8 @@ export function analyzeContext(
     text: string,
     index: number,
     origin = '',
-    stateOnly = false
+    stateOnly = false,
+    delivery?: string
   ): ContextSource | undefined {
     if (!text.trim()) return undefined;
     const source: ContextSource = {
@@ -213,6 +210,13 @@ export function analyzeContext(
       origin,
       evidence: `Record ${index + 1}`,
       stateOnly,
+      delivery:
+        delivery ??
+        (stateOnly
+          ? 'Configuration snapshot; request inclusion unproven'
+          : events[index]?.type === 'response_item'
+            ? `${string(record(events[index].payload).role) || 'Tool'} message; delivery mechanism not recorded`
+            : `${string(events[index]?.type)} record`),
       tokens: stateOnly
         ? 0
         : countTokens(text, { disallowedSpecial: new Set() })
@@ -248,6 +252,23 @@ export function analyzeContext(
   }
 
   function message(text: string, role: string, index: number): void {
+    const hook = ['developer', 'system'].includes(role)
+      ? hookEvidence.find(item => text.includes(item.text))
+      : undefined;
+    if (hook) {
+      add(
+        'hooks',
+        hook.name,
+        hook.text,
+        index,
+        `Hook context at record ${hook.index + 1}, matched to message text`,
+        false,
+        'Explicit hook context field correlated with a recorded message'
+      );
+      const remainder = text.replace(hook.text, '');
+      if (remainder.trim()) message(remainder, role, index);
+      return;
+    }
     if (text.trim() && text.trim() === baseInstructions.trim()) {
       add(
         'base',
@@ -270,7 +291,9 @@ export function analyzeContext(
       'permissions instructions',
       'collaboration_mode',
       'multi_agent_role',
-      'multi_agent_mode'
+      'multi_agent_mode',
+      'hook_context',
+      'hook_output'
     ].join('|');
     const blocks = new RegExp(
       String.raw`<(${tags})\b[^>]*>[\s\S]*?<\/\1>`,
@@ -281,6 +304,16 @@ export function analyzeContext(
     for (const match of matches) {
       const tag = match[1];
       if (tag === 'skills_instructions') catalog(match[0], index, false);
+      else if (tag === 'hook_context' || tag === 'hook_output')
+        add(
+          'hooks',
+          'Tagged hook context',
+          match[0],
+          index,
+          tag,
+          false,
+          'Explicit context marker; hook name not recorded'
+        );
       else if (tag === 'INSTRUCTIONS' && /AGENTS\.md/i.test(text))
         add(
           'agents',
@@ -454,6 +487,21 @@ export function analyzeContext(
       );
     notices.add(
       'Snapshot-only sources are inspectable, not counted: request inclusion is not established.'
+    );
+  }
+  for (const hook of hookEvidence) {
+    if (allMessageText.includes(hook.text)) continue;
+    add(
+      'hooks',
+      hook.name,
+      hook.text,
+      hook.index,
+      'Hook output without a matching prompt message',
+      true,
+      'Hook output recorded; inclusion in the request is not established'
+    );
+    notices.add(
+      'Hook outputs without matching prompt text are inspectable but not included in token estimates.'
     );
   }
   if (!toolDefinitions.size)

@@ -9,24 +9,45 @@
   width: 100%;
 }
 
-.context-toolbar {
-  display: flex;
+/* The slotted action shares the native conversation toolbar, without adding
+   an in-flow loading block that could move the transcript. */
+.context-trigger {
+  display: inline-flex;
+  justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-block: 12px;
-  font-size: var(--font-d2);
-}
-.context-toolbar button {
-  padding: 8px 12px;
+  inline-size: 24px;
+  block-size: 24px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--gray-600);
+  border-radius: var(--border-radius);
   cursor: pointer;
 }
-.context-toolbar button:focus-visible {
-  outline: 2px solid var(--blue-800);
-  outline-offset: 3px;
+.context-trigger svg {
+  inline-size: 100%;
+  block-size: 100%;
+  fill: currentColor;
 }
-#context-origins {
-  margin-block-end: 16px;
+.context-trigger:hover {
+  background: var(--gray-100);
+}
+.context-trigger[aria-expanded='true'] {
+  color: var(--blue-800);
+  background: var(--blue-50);
+}
+.context-trigger:focus-visible {
+  outline: 2px solid var(--blue-800);
+  outline-offset: 2px;
+}
+.context-error {
+  position: fixed;
+  inset-block-start: 60px;
+  inset-inline-end: 16px;
+  z-index: 65;
+  padding: 12px;
+  background: white;
+  color: var(--red-900);
 }
 
 .empty-state {

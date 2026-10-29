@@ -168,13 +168,16 @@ export const updateFloatPosition = (
  *
  * @param content - The markdown content to be rendered.
  * @param shouldRenderMarkdown - Whether to render the content as markdown.
+ * @param allowHTMLBlockPreview - Disable for inspectors that must show static
+ *   Markdown even when the app's optional HTML-preview preference is enabled.
  * @returns The HTML template generated from the markdown content.
  */
 export const getMarkdownTemplate = (
   content: string,
   shouldRenderMarkdown: boolean,
   markdownAllowedTags: string[] | null,
-  markdownAllowedAttributes: string[] | null
+  markdownAllowedAttributes: string[] | null,
+  allowHTMLBlockPreview = true
 ) => {
   if ('katex' in window) {
     //@ts-ignore
@@ -211,6 +214,7 @@ export const getMarkdownTemplate = (
 
     // Render ```html fenced blocks in a sandboxed iframe when explicitly enabled.
     if (
+      allowHTMLBlockPreview &&
       advancedSettings?.renderHTMLBlock &&
       /```html[\s\S]*?```/i.test(content)
     ) {

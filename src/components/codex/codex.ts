@@ -1,6 +1,8 @@
 import { css, html, LitElement, PropertyValues, unsafeCSS } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import iconContext from '../../images/icon-code-comment.svg?raw';
 import type { Conversation } from '../../types/harmony-types';
 import { parseCodexSession } from '../../utils/codex-session';
 import type { EuphonyConversation } from '../conversation/conversation';
@@ -186,30 +188,27 @@ export class EuphonyCodex extends LitElement {
 
     return html`
       <div class="codex-wrapper">
-        <div class="context-toolbar">
-          <button
-            aria-expanded=${this.showContextOrigins}
-            aria-controls="context-origins"
-            @click=${() => void this.toggleContextOrigins()}
-          >
-            Context origins
-          </button>
-          <span>Explore instructions, skills and tool definitions.</span>
-        </div>
-        <div id="context-origins" ?hidden=${!this.showContextOrigins}>
-          ${this.showContextOrigins && this.contextOriginsReady
-            ? html`
-                <euphony-context-origins
-                  .events=${this.rawContextEvents}
-                  theme=${this.theme}
-                ></euphony-context-origins>
-              `
-            : this.showContextOrigins
-              ? html`<p role="status">
-                  ${this.contextOriginsError || 'Loading context inspector…'}
-                </p>`
-              : ''}
-        </div>
+        ${this.contextOriginsReady
+          ? html`
+              <euphony-context-origins
+                id="context-origins"
+                .events=${this.rawContextEvents}
+                .open=${this.showContextOrigins}
+                .invoker=${this.shadowRoot?.querySelector<HTMLElement>(
+                  '.context-trigger'
+                ) ?? null}
+                @context-origins-closed=${() => {
+                  this.showContextOrigins = false;
+                }}
+                theme=${this.theme}
+              ></euphony-context-origins>
+            `
+          : ''}
+        ${this.contextOriginsError
+          ? html`<p class="context-error" role="alert">
+              ${this.contextOriginsError}
+            </p>`
+          : ''}
         <euphony-conversation
           .conversationData=${this.conversation}
           sharing-url=${ifDefined(this.sharingURL ?? undefined)}
@@ -242,7 +241,20 @@ export class EuphonyCodex extends LitElement {
           )}
           theme=${this.theme}
           style=${this.conversationStyle}
-        ></euphony-conversation>
+        >
+          <button
+            slot="conversation-tools"
+            class="context-trigger"
+            aria-label="Context origins"
+            title="Inspect context origins"
+            aria-expanded=${this.showContextOrigins}
+            aria-controls="context-origins"
+            aria-busy=${this.showContextOrigins && !this.contextOriginsReady}
+            @click=${() => void this.toggleContextOrigins()}
+          >
+            ${unsafeHTML(iconContext)}
+          </button>
+        </euphony-conversation>
       </div>
     `;
   }
