@@ -22,6 +22,7 @@
     "access": "public"
   },
   "scripts": {
+    "test:context": "node --test __tests__/context-origins.unit.spec.mjs",
     "dev": "vite --port 3000",
     "build": "tsc && vite build",
     "build:github": "tsc && VITE_EUPHONY_FRONTEND_ONLY=true vite build --mode github",
