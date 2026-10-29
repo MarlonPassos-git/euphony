@@ -115,11 +115,14 @@ export const isCodexSessionJSONL = (raw: unknown[]): boolean => {
   if (events.length === 0) {
     return false;
   }
-  if (events.length / raw.length < 0.6) {
-    return false;
-  }
+  // session_meta is an explicit Codex marker. Unknown events introduced by
+  // newer clients (world_state, token_usage_record, etc.) must not make a
+  // valid session fall below the legacy heuristic threshold.
   if (events.some(event => event.type === 'session_meta')) {
     return true;
+  }
+  if (events.length / raw.length < 0.6) {
+    return false;
   }
 
   const knownTopLevelCount = events.filter(event =>
