@@ -26,6 +26,35 @@ structured chat data and Codex sessions in the browser.
 
 ## Features
 
+### Context origins (this fork)
+
+Load an original Codex session JSONL file and select **Context origins** above
+the conversation. This local-only inspector helps explain where recorded prompt
+text comes from, without installing a skill, plugin, or MCP server in Codex.
+
+- Select a model request (the first request is the initial-context baseline).
+- Inspect categories and individual skill catalog entries, source paths, tool
+  schemas, memory, AGENTS.md blocks, and the underlying text. Search names,
+  paths, or source content, and expand a source to inspect its evidence.
+- Simulate exclusions and reset them. This only changes the text estimate in
+  the report; it never removes instructions from Codex or changes session files.
+- Copy report JSON, including source text, evidence and the hypothetical
+  exclusions. Reports can contain private session content.
+
+**How to interpret the numbers:** input/output usage recorded by Codex is shown
+separately from an `o200k_base` estimate of observable text. Percentages divide
+the text estimate, not the model window or exact input usage. Snapshot-only
+configuration is inspectable but not counted as proven request input. Mirrored
+snapshot text is not counted twice. Image base64, encrypted reasoning, and tool
+hashes are not tokenized as prompt text. Missing schemas are not guessed.
+Compacted sessions carry an explicit reconstruction limitation.
+
+Run locally with `pnpm install --frozen-lockfile`, then
+`VITE_EUPHONY_FRONTEND_ONLY=true pnpm dev`. Run the parser/accounting regression
+suite with `pnpm test:context`. No backend or API key is required for inspection.
+
+### Upstream features
+
 | Feature                     | What it does                                                                                                               |
 | :-------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
 | Harmony conversation viewer | Renders Harmony conversations with support for different message types and metadata.                                       |
